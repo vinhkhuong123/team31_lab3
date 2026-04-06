@@ -7,7 +7,7 @@ Runs both systems on the same E-commerce test cases and compares results.
 import os
 import json
 import time
-from dotenv import load_dotenv
+#from dotenv import load_dotenv
 from src.core.openai_provider import OpenAIProvider
 from src.chatbot import SimpleChatbot
 from src.agent.agent import ReActAgent
@@ -15,7 +15,7 @@ from src.tools.ecommerce_tools import get_tool_definitions
 from src.telemetry.logger import logger
 
 # Load environment
-load_dotenv()
+#load_dotenv()
 
 # Test cases for E-commerce scenario
 TEST_CASES = [
