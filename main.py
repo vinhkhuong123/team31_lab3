@@ -93,3 +93,11 @@ def main():
         total_tokens = sum(m.get("total_tokens", 0) for m in tracker.session_metrics)
         total_latency = sum(m.get("latency_ms", 0) for m in tracker.session_metrics)
         avg_latency = total_latency / len(tracker.session_metrics) if tracker.session_metrics else 0
+    print(f"Total tokens used: {total_tokens}")
+    print(f"Average latency: {avg_latency:.0f}ms")
+    print(f"Provider: {tracker.session_metrics[0].get('provider', 'unknown')}")
+    
+    print("\n✅ Test completed. Check logs/ folder for detailed logs.\n")
+
+    if __name__ == "__main__":
+        main()
