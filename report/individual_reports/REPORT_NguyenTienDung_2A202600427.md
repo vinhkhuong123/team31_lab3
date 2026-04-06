@@ -9,6 +9,7 @@ Modules Implemented:
 test_comparison.py
 test_results.json
 Code Highlights:
+1. test_comparison.py
 Đã viết cấu hình chính của ứng dụng trong test_comparison.py, bao gồm:
 Sử dụng một danh sách TEST_CASES chứa các đối tượng JSON.
 Trong phương thức run_test, bạn triển khai luồng chạy song song cho cùng một Input:
@@ -23,59 +24,107 @@ Sử dụng load_dotenv() và os.getenv để quản lý API Key, tránh việc 
 Documentation:
 test_comparison tương tự với main.py, là điểm vào (entry point) của hệ thống ReAct Agent.
 File này có mục đích so sánh version giữa chatbot và Reactive.
-Cấu trúc chương trình bao gồm: nạp biến môi trường, khởi tạo LLM, định nghĩa tools, chạy agent với các câu hỏi mẫu và in báo cáo metric.
+2. test_results.json
+   Là tập data để test case khitest_comparison.py
 II. Debugging Case Study (10 điểm)
 The Quoted Argument Parsing Bug — discovered and diagnosed using the telemetry logging system.
 
-Problem Description: Agent rơi vào vòng lặp retry ở mọi test case. Nó gọi check_stock("iPhone") với ký tự dấu ngoặc kép trong đối số, khiến tool luôn trả về "không tìm thấy". Agent lặp lại cùng một lời gọi tối đa 5 lần (max_steps), sau đó trả về "Không tìm thấy câu trả lời" hoặc tự bịa ra câu trả lời.
+Problem Description: Simple call gây lỗi nghiêm trọng, còn reactive đã sửa phần overtime
 
 Log Source (logs/2026-04-06.log):
 
-Step 0 — Agent sends quoted argument:
+Version 1: Đây là quote trên file json
+{
+    "test_id": 1,
+    "test_name": "Simple Product Query",
+    "complexity": "simple",
+    "requires_tools": false,
+    "chatbot": {
+      "status": "success",
+      "answer": "The price of an iPhone can vary greatly depending on the model and storage capacity. As of recent trends, here are some estimated prices for different models:\n\n- iPhone 14: Typically around $799 to $999, depending on storage options.\n- iPhone 14 Pro: Prices usually range from $999 to $1,299.\n- iPhone SE (latest model): Usually around $429 to $479.\n\nKeep in mind, these prices can vary based on promotions, trade-ins, and the retailer.",
+      "time_ms": 2100.6360054016113,
+      "tool_calls": 0
+    },
+    "agent": {
+      "status": "success",
+      "answer": "No answer found after max steps.",
+      "time_ms": 7033.267259597778,
+      "tool_calls": 1
+    }
+  },
+  {
+    "test_id": 2,
+    "test_name": "Multi-step Reasoning",
+    "complexity": "complex",
+    "requires_tools": true,
+    "chatbot": {
+      "status": "success",
+      "answer": "To give you an estimated total price, I will make a few assumptions:\n\n1. **iPhone Price:** A new iPhone typically ranges from $699 to $1,299, depending on the model. For calculation, I'll assume you are purchasing the iPhone 14 at about $799 each.\n\n2. **Coupon Code:** Assuming the \"WINNER\" coupon offers a 10% discount, a typical discount rate for such codes.\n\n3. **Shipping to Hanoi:** International shipping fees can vary, but an estimated cost might be around $30-$50.\n\nLet's do the math:\n\n- **Cost of 2 iPhones:** 2 x $799 = $1,598\n- **10% Discount from Coupon:** $1,598 x 10% = $159.80\n- **Discounted Price:** $1,598 - $159.80 = $1,438.20\n- **Estimated Shipping Cost:** Approximately $40\n\n**Total Estimated Price:** $1,438.20 (phones) + $40 (shipping) = $1,478.20\n\nPlease check the exact prices, coupon conditions, and shipping fees at the time of purchase on your chosen e-commerce site for the most accurate total cost.",
+      "time_ms": 3698.1232166290283,
+      "tool_calls": 0
+    },
+    "agent": {
+      "status": "success",
+      "answer": "No answer found after max steps.",
+      "time_ms": 6298.415899276733,
+      "tool_calls": 1
+    }
+  },
 
-{"timestamp": "2026-04-06T08:02:11.682612", "event": "AGENT_STEP", "data": {"step": 0, "thought": "To provide the current price of an iPhone, I need to check the stock and price information for it.", "action": "check_stock", "action_args": "\"iPhone\""}}
-Tool receives bad input — lookup fails:
 
-{"timestamp": "2026-04-06T08:02:11.682612", "event": "TOOL_EXECUTION", "data": {"tool": "check_stock", "args": "\"iPhone\"", "observation": "Tool 'check_stock' returned: Product '\"iPhone\"' not found in inventory. Available products: ['iPhone', 'iPad', 'MacBook', 'AirPods']"}}
-Step 1 — Agent retries with same bad format:
+Solution (đề xuất cho v2):  "test_id": 3,
+    "test_name": "Stock Check with Discount",
+    "complexity": "complex",
+    "requires_tools": true,
+    "chatbot": {
+      "status": "success",
+      "answer": "I don't have real-time stock information, but MacBooks are typically in stock at major electronics retailers and online stores. Prices for MacBooks can vary depending on the model and specifications. As an estimate, the starting price for a new MacBook Air is around $999, while a MacBook Pro can start at approximately $1,299.\n\nStudent discounts usually range between 10-15% off the regular price. If we assume a 10% discount on a $999 MacBook Air, the price would be approximately $899.10. For a $1,299 MacBook Pro, the discounted price would be around $1,169.10.\n\nI recommend checking the official Apple website or a trusted retailer for the most accurate stock status and to apply the discount code during checkout for the exact discount amount.",
+      "time_ms": 2838.5705947875977,
+      "tool_calls": 0
+    },
+    "agent": {
+      "status": "success",
+      "answer": "The MacBook is in stock and originally priced at $1200. With the 10% STUDENT discount, the final price is $1080.",
+      "time_ms": 9057.711839675903,
+      "tool_calls": 1
+    }
+  },
+  {
+    "test_id": 4,
+    "test_name": "Invalid Coupon Handling",
+    "complexity": "complex",
+    "requires_tools": true,
+    "chatbot": {
+      "status": "success",
+      "answer": "The cost of AirPods generally ranges from $129 to $249 depending on the model. Let's use an average price of around $199 for a pair of AirPods for this estimate.\n\nFor 5 AirPods at $199 each, the total would be $995.\n\nPromo codes like \"INVALID\" are typically not recognized or accepted, so this code likely wouldn't provide a discount. \n\nShipping within the USA is often free for orders of this amount, or there might be minimal charges, often around $5 to $15. However, many retailers offer free shipping for expensive items like AirPods.\n\nIn this case, if we assume free shipping and no applicable discount from the promo code, the final cost would still be $995.",
+      "time_ms": 3392.695426940918,
+      "tool_calls": 0
+    },
+    "agent": {
+      "status": "success",
+      "answer": "The final cost for 5 AirPods with no discount applied and shipped to the USA is $1,020 ($995 for the AirPods and $25 for shipping).",
+      "time_ms": 8047.671794891357,
+      "tool_calls": 1
+    }
+  }
+]
 
-{"timestamp": "2026-04-06T08:02:12.892616", "event": "AGENT_STEP", "data": {"step": 1, "thought": "The tool 'check_stock' previously returned that the product '\"iPhone\"' was not found due to incorrect formatting, but it also indicated that 'iPhone' is an available product. I will call the tool correctly this time.", "action": "check_stock", "action_args": "iPhone"}}
-Lưu ý: LLM đã nhận ra lỗi định dạng trong phần Thought, nhưng parser vẫn lấy sai dữ liệu.
 
-Final result after 5 steps — failure:
-
-{"timestamp": "2026-04-06T08:02:16.716657", "event": "AGENT_END", "data": {"steps": 5, "final_answer": null}}
-Diagnosis: Nguyên nhân gốc nằm ở _parse_response(). Regex r'Action:\s?(\w+)\(([^)]*)\)' bắt ([^)]*) --- toàn bộ nội dung bên trong dấu ngoặc, bao gồm cả dấu ngoặc kép. Khi GPT-4o xuất Action: check_stock("iPhone"), phần được capture là "iPhone" (có ký tự " thật). Hàm tool check_stock() sau đó dùng item_name.lower().strip('"') nhưng strip chỉ loại bỏ dấu ngoặc kép ngoài cùng, trong khi key trong inventory là iPhone (chữ thường). Sự kết hợp giữa dấu ngoặc kép thừa + không khớp chữ hoa/thường khiến mọi lần tra cứu đều thất bại.
-
-Đây là một tool interface bug, không phải lỗi của LLM hay prompt. LLM đã xác định đúng tool và đối số --- lớp parsing đã làm sai dữ liệu.
-
-Solution (đề xuất cho v2):
-
-# Trong _parse_response(), sau khi lấy action_args:
-action_args = action_args.strip().strip('"\'')  # Loại bỏ dấu ngoặc kép bao quanh
-Và trong ecommerce_tools.py, chuẩn hóa key tra cứu:
-
-# Sử dụng so khớp không phân biệt hoa/thường với chuỗi đã loại bỏ dấu ngoặc kép
-for key in INVENTORY:
-    if key.lower() == item_lower.strip('"'):
 III. Personal Insights: Chatbot vs ReAct (10 Points)
 Reflect on the reasoning capability difference.
 
-Reasoning: Thought block giúp agent tách bạch quá trình suy nghĩ và hành động. Với ReAct, agent có thể quyết định cần gọi tool nào trước khi trả lời, thay vì chỉ dựa vào câu trả lời “trực tiếp” của Chatbot.
-Reliability: Agent có thể kém hơn chatbot khi model hiểu sai mục đích của tool hoặc khi tool bị gọi quá mức. Trong main.py, nếu tool calculator nhận biểu thức không hợp lệ thì agent có thể dừng lại thay vì trả lời mềm dẻo như chatbot.
-Observation: Feedback từ môi trường (kết quả của search, weather, calculator) giúp agent cập nhật bước tiếp theo. Ví dụ, khi tool trả về kết quả quan trọng, agent có thể dùng thông tin đó để hoàn thiện câu trả lời cuối cùng.
+Reasoning: So sánh reactive và simple cho thấy reactive tốt hơn
+Reliability: Agent có lúc kém hơn
+Observation: Tùy thuộc vào tính chất môi trường
 IV. Future Improvements (5 Points)
 How would you scale this for a production-level AI agent system?
 
 Scalability:
-Tách define_tools() thành module riêng để dễ mở rộng và bổ sung tool mới.
-Sử dụng hàng đợi bất đồng bộ cho các tác vụ tool call, đặc biệt với các tool yêu cầu IO.
+Em đánh giá là 3/5
 Safety:
-Thay vì eval() trực tiếp, dùng parser an toàn cho calculator.
-Thêm lớp kiểm soát đầu vào tool và cơ chế giới hạn action để tránh agent lặp vô hạn.
+Em đánh giá là 4/5
 Performance:
-Caching kết quả tool search/weather để giảm số lần gọi API không cần thiết.
-Dùng metric tracker để phát hiện các truy vấn tốn nhiều token và tối ưu model hoặc prompt.
+Em đánh giá là 3/5
 Note
 
 Sau khi hoàn thành, đổi tên file thành REPORT_[YOUR_NAME].md và lưu vào thư mục này.
